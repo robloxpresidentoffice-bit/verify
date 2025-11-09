@@ -21,6 +21,10 @@ const client = new Client({
 
 const LOG_CHANNEL_ID = process.env.LOG_CHANNEL_ID;
 
+// 역할 ID 설정
+const ROLE1 = '1437054700233953340'; // 제거할 역할
+const ROLE2 = '1426570497713373194'; // 유지할 역할
+
 // ================================
 // 2️⃣ 입장 로그
 // ================================
@@ -64,7 +68,21 @@ client.on("guildMemberRemove", async (member) => {
 });
 
 // ================================
-// 4️⃣ 상태 메시지 자동 변경
+// 4️⃣ 역할 자동 정리 (roll.js 기능)
+// ================================
+client.on("guildMemberUpdate", async (oldMember, newMember) => {
+  try {
+    if (newMember.roles.cache.has(ROLE1) && newMember.roles.cache.has(ROLE2)) {
+      await newMember.roles.remove(ROLE1);
+      console.log(`✅ Removed role1 from ${newMember.user.tag} because they also have role2.`);
+    }
+  } catch (err) {
+    console.error(`⚠️ 역할 제거 오류: ${err.message}`);
+  }
+});
+
+// ================================
+// 5️⃣ 상태 메시지 자동 변경
 // ================================
 client.once("ready", () => {
   console.log(`Logged in as ${client.user.tag}`);
@@ -94,7 +112,7 @@ client.once("ready", () => {
 });
 
 // ================================
-// 5️⃣ 웹서버
+// 6️⃣ 웹서버
 // ================================
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -104,6 +122,7 @@ app.get("/", (req, res) => res.send("봇이 정상 실행 중입니다!"));
 app.listen(PORT, () => console.log(`✅ 서버 실행 중: http://localhost:${PORT}`));
 
 // ================================
-// 6️⃣ 로그인
+// 7️⃣ 로그인
 // ================================
 client.login(process.env.DISCORD_TOKEN);
+
