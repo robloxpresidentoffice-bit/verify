@@ -3,10 +3,11 @@
 // ================================
 import "dotenv/config";
 import { Client, GatewayIntentBits, Partials, EmbedBuilder, ActivityType } from "discord.js";
+import express from "express";
 
-// auth.js와 ticket.js를 import
-import "./auth.js";
-import "./ticket.js";
+// auth.js와 ticket.js import
+import { setupAuth } from "./auth.js";
+import { setupTicket } from "./ticket.js";
 
 const client = new Client({
   intents: [
@@ -86,25 +87,23 @@ client.once("ready", () => {
       console.error(`상태 변경 오류: ${err.message}`);
     }
   }, 30000);
+
+  // auth.js와 ticket.js 실행
+  setupAuth(client);
+  setupTicket(client);
 });
 
 // ================================
-// 6️⃣ 웹서버 (포트)
+// 5️⃣ 웹서버
 // ================================
-import express from "express";
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.get("/", (req, res) => {
-  res.send("봇이 정상 실행 중입니다!");
-});
+app.get("/", (req, res) => res.send("봇이 정상 실행 중입니다!"));
 
-app.listen(PORT, () => {
-  console.log(`✅ 서버 실행 중: http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`✅ 서버 실행 중: http://localhost:${PORT}`));
 
 // ================================
-// 5️⃣ 로그인
+// 6️⃣ 로그인
 // ================================
 client.login(process.env.DISCORD_TOKEN);
