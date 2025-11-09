@@ -140,16 +140,22 @@ export async function setupTicket(client) {
 
       const messages = await channel.messages.fetch({ limit: 100 });
       const lines = messages
-        .reverse()
-        .map((m) => {
-          const timestamp = m.createdAt.toISOString().replace("T", " ").split(".")[0];
-          let content = m.content;
-          if (m.attachments.size > 0) {
-            content += " " + [...m.attachments.values()].map((a) => a.url).join(" ");
-          }
-          return `[${timestamp}] ${m.author.tag} : ${content}`;
-        })
-        .join("\n");
+  .reverse()
+  .map((m) => {
+    // 한국시간 계산 (UTC + 9)
+    const kstDate = new Date(m.createdAt.getTime() + 9 * 60 * 60 * 1000);
+    const timestamp = kstDate
+      .toISOString()
+      .replace("T", " ")
+      .split(".")[0];
+
+    let content = m.content;
+    if (m.attachments.size > 0) {
+      content += " " + [...m.attachments.values()].map((a) => a.url).join(" ");
+    }
+    return `[${timestamp}] ${m.author.tag} : ${content}`;
+  })
+  .join("\n");
 
       const filePath = path.join(process.cwd(), `${channel.name}_log.txt`);
       fs.writeFileSync(filePath, lines, "utf-8");
