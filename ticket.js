@@ -142,17 +142,21 @@ export async function setupTicket(client) {
       const lines = messages
   .reverse()
   .map((m) => {
-    // 한국시간 계산 (UTC + 9)
-    const kstDate = new Date(m.createdAt.getTime() + 9 * 60 * 60 * 1000);
-    const timestamp = kstDate
+    const timestamp = new Date(m.createdAt.getTime() + 9*60*60*1000) // 한국시간
       .toISOString()
       .replace("T", " ")
       .split(".")[0];
 
     let content = m.content;
+
+    // Discord 미디어 첨부만 포함
     if (m.attachments.size > 0) {
-      content += " " + [...m.attachments.values()].map((a) => a.url).join(" ");
+      const urls = [...m.attachments.values()]
+        .map(a => a.url)
+        .filter(url => url.startsWith("https://media.discordapp.net")); // Discord 미디어만
+      if (urls.length > 0) content += " " + urls.join(" ");
     }
+
     return `[${timestamp}] ${m.author.tag} : ${content}`;
   })
   .join("\n");
