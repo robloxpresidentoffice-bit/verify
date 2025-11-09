@@ -88,25 +88,34 @@ export async function setupTicket(client) {
         const ticketName = `수동인증요청-${interaction.user.username}-${ticketCounter++}`;
 
         const ticketChannel = await interaction.guild.channels.create({
-          name: ticketName,
-          type: 0,
-          parent: TICKET_CATEGORY_ID,
-          permissionOverwrites: [
-            {
-              id: interaction.guild.id,
-              deny: [PermissionsBitField.Flags.ViewChannel],
-            },
-            {
-              id: interaction.user.id,
-              allow: [
-                PermissionsBitField.Flags.ViewChannel,
-                PermissionsBitField.Flags.SendMessages,
-                PermissionsBitField.Flags.AttachFiles,
-                PermissionsBitField.Flags.EmbedLinks,
-              ],
-            },
-          ],
-        });
+  name: ticketName,
+  type: 0,
+  parent: TICKET_CATEGORY_ID,
+  permissionOverwrites: [
+    {
+      id: interaction.guild.id, // 전체 일반인 차단
+      deny: [PermissionsBitField.Flags.ViewChannel],
+    },
+    {
+      id: interaction.user.id, // 티켓 작성자 허용
+      allow: [
+        PermissionsBitField.Flags.ViewChannel,
+        PermissionsBitField.Flags.SendMessages,
+        PermissionsBitField.Flags.AttachFiles,
+        PermissionsBitField.Flags.EmbedLinks,
+      ],
+    },
+    {
+      id: "1427689762902511616", // 추가된 역할 권한
+      allow: [
+        PermissionsBitField.Flags.ViewChannel,
+        PermissionsBitField.Flags.SendMessages,
+        PermissionsBitField.Flags.AttachFiles,
+        PermissionsBitField.Flags.EmbedLinks,
+      ],
+    },
+  ],
+});
 
         // 티켓 생성 완료 메시지
         await interaction.editReply({
