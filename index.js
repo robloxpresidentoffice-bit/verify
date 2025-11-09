@@ -52,6 +52,21 @@ client.once("ready", async () => {
 });
 
 // ================================
+// 🌐 Render WebService
+// ================================
+import express from "express";
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get("/", (req, res) => {
+  res.send("ROKA Verify Bot is running ✅");
+});
+
+app.listen(PORT, () => {
+  console.log(`🌐 Web server running on port ${PORT}`);
+});
+
+// ================================
 // 🚀 로그인
 // ================================
 client.login(process.env.DISCORD_TOKEN).catch((err) => {
