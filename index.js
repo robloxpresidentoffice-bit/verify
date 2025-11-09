@@ -1,15 +1,13 @@
 // ================================
-// 📦 기본 모듈
+// 1️⃣ 환경 설정
 // ================================
 import "dotenv/config";
-import express from "express"; // 포트용
-import { Client, GatewayIntentBits, Partials, ActivityType } from "discord.js";
-import { setupAuth } from "./auth.js";
-import { setupTicket } from "./ticket.js";
+import { Client, GatewayIntentBits, Partials, EmbedBuilder, ActivityType } from "discord.js";
 
-// ================================
-// ⚙️ 클라이언트 설정
-// ================================
+// auth.js와 ticket.js를 import
+import "./auth.js";
+import "./ticket.js";
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -17,14 +15,58 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
   ],
-  partials: [Partials.Channel],
+  partials: [Partials.Channel, Partials.GuildMember],
+});
+
+const LOG_CHANNEL_ID = process.env.LOG_CHANNEL_ID;
+
+// ================================
+// 2️⃣ 입장 로그
+// ================================
+client.on("guildMemberAdd", async (member) => {
+  console.log("👋 멤버 입장:", member.user.tag);
+
+  const logChannel = member.guild.channels.cache.get(LOG_CHANNEL_ID);
+  if (!logChannel) return console.log("❌ 로그 채널을 찾을 수 없음");
+
+  const embed = new EmbedBuilder()
+    .setTitle("멤버가 입장했습니다!")
+    .setColor("#00bcd4")
+    .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+    .addFields(
+      { name: "유저", value: `${member.user}`, inline: true },
+      { name: "입장 시간", value: `<t:${Math.floor(Date.now() / 1000)}:F>` }
+    );
+
+  await logChannel.send({ embeds: [embed] });
 });
 
 // ================================
-// 🪄 봇 준비
+// 3️⃣ 퇴장 로그
 // ================================
-client.once("ready", async () => {
-  console.log(`✅ 로그인 성공: ${client.user.tag}`);
+client.on("guildMemberRemove", async (member) => {
+  console.log("❌ 멤버 퇴장:", member.user.tag);
+
+  const logChannel = member.guild.channels.cache.get(LOG_CHANNEL_ID);
+  if (!logChannel) return console.log("❌ 로그 채널을 찾을 수 없음");
+
+  const embed = new EmbedBuilder()
+    .setTitle("멤버가 퇴장했습니다.")
+    .setColor("#d91e18")
+    .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+    .addFields(
+      { name: "유저", value: `${member.user}`, inline: true },
+      { name: "퇴장 시간", value: `<t:${Math.floor(Date.now() / 1000)}:F>` }
+    );
+
+  await logChannel.send({ embeds: [embed] });
+});
+
+// ================================
+// 4️⃣ 상태 메시지 자동 변경
+// ================================
+client.once("ready", () => {
+  console.log(`Logged in as ${client.user.tag}`);
 
   const statuses = [
     { name: '디엠으로 "안녕"을 보내보세요', state: '🪖 전격부대에 입대 해보세요!' },
@@ -44,28 +86,9 @@ client.once("ready", async () => {
       console.error(`상태 변경 오류: ${err.message}`);
     }
   }, 30000);
-
-  await setupAuth(client);
-  await setupTicket(client);
-
-  // ================================
-  // 🌐 Express 서버 (포트 바인딩)
-  // ================================
-  const app = express();
-
-  app.get("/", (req, res) => {
-    res.send("ROKA Verify Bot is running!");
-  });
-
-  const PORT = process.env.PORT || 3000; // Render에서 자동으로 할당된 포트 사용
-  app.listen(PORT, () => {
-    console.log(`🌐 서버 포트 열림: ${PORT}`);
-  });
 });
 
 // ================================
-// 🚀 로그인
+// 5️⃣ 로그인
 // ================================
-client.login(process.env.DISCORD_TOKEN).catch((err) => {
-  console.error("❌ 로그인 실패:", err);
-});
+client.login(process.env.DISCORD_TOKEN);
