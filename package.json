@@ -1,0 +1,14 @@
+{
+  "name": "verify-bot",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "@discordjs/builders": "^1.13.0",
+    "@supabase/supabase-js": "^2.46.1",
+    "discord.js": "^14.24.2",
+    "dotenv": "^16.4.5",
+    "node-fetch": "^3.3.2"
+  }
+}
