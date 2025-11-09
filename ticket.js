@@ -26,7 +26,7 @@ export async function setupTicket(client) {
     if (msg.content === "!티켓") {
       const embed = new EmbedBuilder()
         .setColor("#2a5034")
-        .setTitle("<:ID:1437142126134820905> 수동인증 요청 티켓")
+        .setTitle("<:ROKA:1437150986450899024> 수동인증 요청 티켓")
         .setDescription(
           "본인이 만 8세 미만의 아동이거나, 인증과정 중 문제가 있을 경우 이용해 주시기 바랍니다. " +
           "수동인증은 인증요청시각 기준으로 12시간 내 완료됩니다."
