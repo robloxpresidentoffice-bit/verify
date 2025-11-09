@@ -89,6 +89,22 @@ client.once("ready", () => {
 });
 
 // ================================
+// 6️⃣ 웹서버 (포트)
+// ================================
+import express from "express";
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get("/", (req, res) => {
+  res.send("봇이 정상 실행 중입니다!");
+});
+
+app.listen(PORT, () => {
+  console.log(`✅ 서버 실행 중: http://localhost:${PORT}`);
+});
+
+// ================================
 // 5️⃣ 로그인
 // ================================
 client.login(process.env.DISCORD_TOKEN);
