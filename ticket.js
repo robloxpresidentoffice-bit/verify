@@ -10,6 +10,7 @@ import {
   TextInputBuilder,
   TextInputStyle,
   PermissionsBitField,
+  ChannelType,
 } from "discord.js";
 import fs from "fs";
 import path from "path";
@@ -44,85 +45,80 @@ export async function setupTicket(client) {
   });
 
   client.on("interactionCreate", async (interaction) => {
-    if (interaction.isButton() && interaction.customId === "open_ticket") {
-      const modal = new ModalBuilder()
-        .setCustomId("ticket_modal")
-        .setTitle("수동인증 요청하기");
+    try {
+      if (interaction.isButton() && interaction.customId === "open_ticket") {
+        const modal = new ModalBuilder()
+          .setCustomId("ticket_modal")
+          .setTitle("수동인증 요청하기");
 
-      const discordNameInput = new TextInputBuilder()
-        .setCustomId("discord_name")
-        .setLabel("본인의 Discord 이름을 알려주세요.")
-        .setStyle(TextInputStyle.Short)
-        .setRequired(true);
+        const discordNameInput = new TextInputBuilder()
+          .setCustomId("discord_name")
+          .setLabel("본인의 Discord 이름을 알려주세요.")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true);
 
-      const robloxNameInput = new TextInputBuilder()
-        .setCustomId("roblox_name")
-        .setLabel("본인의 Roblox 이름을 알려주세요.")
-        .setStyle(TextInputStyle.Short)
-        .setRequired(true);
+        const robloxNameInput = new TextInputBuilder()
+          .setCustomId("roblox_name")
+          .setLabel("본인의 Roblox 이름을 알려주세요.")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true);
 
-      const confirmationInput = new TextInputBuilder()
-        .setCustomId("confirmation")
-        .setLabel("장난으로 티켓을 열지 않겠습니다.")
-        .setStyle(TextInputStyle.Short)
-        .setRequired(true);
+        const confirmationInput = new TextInputBuilder()
+          .setCustomId("confirmation")
+          .setLabel("장난으로 티켓을 열지 않겠습니다.")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true);
 
-      modal.addComponents(
-        new ActionRowBuilder().addComponents(discordNameInput),
-        new ActionRowBuilder().addComponents(robloxNameInput),
-        new ActionRowBuilder().addComponents(confirmationInput)
-      );
+        modal.addComponents(
+          new ActionRowBuilder().addComponents(discordNameInput),
+          new ActionRowBuilder().addComponents(robloxNameInput),
+          new ActionRowBuilder().addComponents(confirmationInput)
+        );
 
-      return interaction.showModal(modal);
-    }
+        await interaction.showModal(modal);
+        return;
+      }
 
-    if (interaction.isModalSubmit() && interaction.customId === "ticket_modal") {
-      await interaction.reply({ content: "*⏳ 티켓생성중...*", ephemeral: true });
+      if (interaction.isModalSubmit() && interaction.customId === "ticket_modal") {
+        // 먼저 티켓생성중 메시지 보내기
+        await interaction.reply({ content: "*⏳ 티켓생성중…*", ephemeral: true });
 
-      // 3초 대기 후 생성
-      setTimeout(async () => {
         const discordName = interaction.fields.getTextInputValue("discord_name");
         const robloxName = interaction.fields.getTextInputValue("roblox_name");
         const prankConfirm = interaction.fields.getTextInputValue("confirmation");
 
-        const ticketName = `수동인증요청-${interaction.user.username}-${ticketCounter++}`;
+        const ticketName = `수동인증요청‑${interaction.user.username}‑${ticketCounter++}`;
 
         const ticketChannel = await interaction.guild.channels.create({
-  name: ticketName,
-  type: 0,
-  parent: TICKET_CATEGORY_ID,
-  permissionOverwrites: [
-    {
-      id: interaction.guild.id, // 전체 일반인 차단
-      deny: [PermissionsBitField.Flags.ViewChannel],
-    },
-    {
-      id: interaction.user.id, // 티켓 작성자 허용
-      allow: [
-        PermissionsBitField.Flags.ViewChannel,
-        PermissionsBitField.Flags.SendMessages,
-        PermissionsBitField.Flags.AttachFiles,
-        PermissionsBitField.Flags.EmbedLinks,
-      ],
-    },
-    {
-      id: "1427689762902511616", // 추가된 역할 권한
-      allow: [
-        PermissionsBitField.Flags.ViewChannel,
-        PermissionsBitField.Flags.SendMessages,
-        PermissionsBitField.Flags.AttachFiles,
-        PermissionsBitField.Flags.EmbedLinks,
-      ],
-    },
-  ],
-});
-
-        // 티켓 생성 완료 메시지
-        await interaction.editReply({
-          content: `*${interaction.user}님 '수동인증요청' 티켓이 생성되었습니다. <#${ticketChannel.id}> 로 이동하세요.*`,
+          name: ticketName,
+          type: ChannelType.GuildText,       // 수정: 문자열 타입 대신 enum 사용
+          parent: TICKET_CATEGORY_ID,
+          permissionOverwrites: [
+            {
+              id: interaction.guild.id,
+              deny: [PermissionsBitField.Flags.ViewChannel],
+            },
+            {
+              id: interaction.user.id,
+              allow: [
+                PermissionsBitField.Flags.ViewChannel,
+                PermissionsBitField.Flags.SendMessages,
+                PermissionsBitField.Flags.AttachFiles,
+                PermissionsBitField.Flags.EmbedLinks,
+              ],
+            },
+            {
+              id: "1427689762902511616",
+              allow: [
+                PermissionsBitField.Flags.ViewChannel,
+                PermissionsBitField.Flags.SendMessages,
+                PermissionsBitField.Flags.AttachFiles,
+                PermissionsBitField.Flags.EmbedLinks,
+              ],
+            },
+          ],
         });
 
-        // 티켓 채널 임베드
         const ticketEmbed = new EmbedBuilder()
           .setColor("#2a5034")
           .setTitle("수동인증요청")
@@ -141,57 +137,77 @@ export async function setupTicket(client) {
         );
 
         await ticketChannel.send({ embeds: [ticketEmbed], components: [closeRow] });
-      }, 2000);
-    }
 
-    if (interaction.isButton() && interaction.customId === "close_ticket") {
-      const channel = interaction.channel;
+        // 생성 완료 메시지로 수정
+        await interaction.editReply({
+          content: `*${interaction.user}님 '수동인증요청' 티켓이 생성되었습니다. <#${ticketChannel.id}> 로 이동하세요.*`,
+          ephemeral: true,
+        });
 
-      const messages = await channel.messages.fetch({ limit: 100 });
-      const lines = messages
-  .reverse()
-  .map((m) => {
-    const timestamp = new Date(m.createdAt.getTime() + 9*60*60*1000) // 한국시간
-      .toISOString()
-      .replace("T", " ")
-      .split(".")[0];
+        return;
+      }
 
-    let content = m.content;
+      if (interaction.isButton() && interaction.customId === "close_ticket") {
+        await interaction.deferReply({ ephemeral: true });
 
-    // Discord 미디어 첨부만 포함
-    if (m.attachments.size > 0) {
-      const urls = [...m.attachments.values()]
-        .map(a => a.url)
-        .filter(url => url.startsWith("https://media.discordapp.net")); // Discord 미디어만
-      if (urls.length > 0) content += " " + urls.join(" ");
-    }
+        const channel = interaction.channel;
+        const messages = await channel.messages.fetch({ limit: 100 });
+        const lines = messages
+          .reverse()
+          .map((m) => {
+            const timestamp = new Date(m.createdAt.getTime() + 9*60*60*1000)
+              .toISOString()
+              .replace("T", " ")
+              .split(".")[0];
+            let content = m.content;
+            if (m.attachments.size > 0) {
+              const urls = [...m.attachments.values()]
+                .map(a => a.url)
+                .filter(url => url.startsWith("https://media.discordapp.net"));
+              if (urls.length > 0) content += " " + urls.join(" ");
+            }
+            return `[${timestamp}] ${m.author.tag} : ${content}`;
+          })
+          .join("\n");
 
-    return `[${timestamp}] ${m.author.tag} : ${content}`;
-  })
-  .join("\n");
+        const filePath = path.join(process.cwd(), `${channel.name}_log.txt`);
+        fs.writeFileSync(filePath, lines, "utf-8");
 
-      const filePath = path.join(process.cwd(), `${channel.name}_log.txt`);
-      fs.writeFileSync(filePath, lines, "utf-8");
+        await channel.permissionOverwrites.edit(interaction.user.id, { ViewChannel: false });
 
-      await channel.permissionOverwrites.edit(interaction.user.id, { ViewChannel: false });
+        const deleteRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId("delete_ticket")
+            .setLabel("🗑️ 티켓 삭제하기")
+            .setStyle(ButtonStyle.Danger)
+        );
 
-      const deleteRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("delete_ticket")
-          .setLabel("🗑️ 티켓 삭제하기")
-          .setStyle(ButtonStyle.Danger)
-      );
+        await channel.send({ content: "티켓을 삭제하시겠습니까?", components: [deleteRow] });
 
-      await channel.send({ content: "티켓을 삭제하시겠습니까?", components: [deleteRow] });
+        const logChannel = await interaction.guild.channels.fetch(LOG_CHANNEL_ID);
+        await logChannel.send({ content: `#${channel.name} 채팅로그`, files: [filePath] });
+        fs.unlinkSync(filePath);
 
-      const logChannel = await interaction.guild.channels.fetch(LOG_CHANNEL_ID);
-      await logChannel.send({ content: `#${channel.name} 채팅로그`, files: [filePath] });
-      fs.unlinkSync(filePath);
-    }
+        await interaction.editReply({ content: "티켓이 닫혔습니다.", ephemeral: true });
+        return;
+      }
 
-    if (interaction.isButton() && interaction.customId === "delete_ticket") {
-      const channel = interaction.channel;
-      await channel.delete();
+      if (interaction.isButton() && interaction.customId === "delete_ticket") {
+        await interaction.deferReply({ ephemeral: true });
+
+        const channel = interaction.channel;
+        await channel.delete();
+
+        // 삭제 메시지 응답(옵션)
+        await interaction.editReply({ content: "티켓 채널이 삭제되었습니다.", ephemeral: true });
+        return;
+      }
+
+    } catch (error) {
+      console.error("티켓 처리 중 에러:", error);
+      if (interaction.isRepliable()) {
+        await interaction.reply({ content: "처리 중 오류가 발생했습니다.", ephemeral: true });
+      }
     }
   });
 }
