@@ -234,61 +234,70 @@
 
       // 🧾 모달 제출 → Roblox 계정 검색
       if (interaction.isModalSubmit() && interaction.customId === "roblox_modal") {
-        const username = interaction.fields.getTextInputValue("roblox_username");
-        const embedLoading = new EmbedBuilder()
-          .setColor("#5661EA")
-          .setTitle("<a:Loading:1437121506181120101> Roblox 계정 검색중...")
-          .setDescription(`입력한 닉네임: **${username}**\n잠시만 기다려주세요.`)
-          .setFooter({ text: `ROKA Verify • ${getKSTTime()}` });
+  const username = interaction.fields.getTextInputValue("roblox_username");
 
-        await interaction.reply({ embeds: [embedLoading], ephemeral: true });
-        await new Promise((r) => setTimeout(r, 3000)); // 5초 대기
+  // 로딩 임베드
+  const embedLoading = new EmbedBuilder()
+    .setColor("#5661EA")
+    .setTitle("<a:Loading:1437121506181120101> Roblox 계정 검색중...")
+    .setDescription(`입력한 닉네임: **${username}**\n잠시만 기다려주세요.`)
+    .setFooter({ text: `ROKA Verify • ${getKSTTime()}` });
 
-        let robloxUser = null;
-        try {
-          const search = await fetch(
-            `https://users.roblox.com/v1/users/search?keyword=${encodeURIComponent(username)}&limit=1`
-          );
-          const data = await search.json();
-          if (data.data?.length) robloxUser = data.data[0];
+  await interaction.reply({ embeds: [embedLoading], ephemeral: true });
 
-          if (!robloxUser) {
-            const res2 = await fetch("https://users.roblox.com/v1/usernames/users", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ usernames: [username] }),
-            });
-            const data2 = await res2.json();
-            if (data2.data?.length) robloxUser = data2.data[0];
-          }
-        } catch {
-          return interaction.editReply({ embeds: [errorEmbed("40401")], components: [] });
-        }
+  let robloxUser = null;
+  try {
+    const search = await fetch(
+      `https://users.roblox.com/v1/users/search?keyword=${encodeURIComponent(username)}&limit=1`
+    );
+    const data = await search.json();
+    if (data.data?.length) robloxUser = data.data[0];
 
-        if (!robloxUser)
-          return interaction.editReply({ embeds: [errorEmbed("40401")], components: [] });
+    if (!robloxUser) {
+      const res2 = await fetch("https://users.roblox.com/v1/usernames/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usernames: [username] }),
+      });
+      const data2 = await res2.json();
+      if (data2.data?.length) robloxUser = data2.data[0];
+    }
+  } catch {
+    return interaction.editReply({ embeds: [errorEmbed("40401")], components: [] });
+  }
 
-        const verifyRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId(`verify_${robloxUser.id}`)
-            .setLabel("연동하기")
-            .setStyle(ButtonStyle.Success),
-          new ButtonBuilder()
-            .setCustomId("re_search")
-            .setLabel("다시 검색")
-            .setStyle(ButtonStyle.Danger)
-        );
+  if (!robloxUser) {
+    return interaction.editReply({ embeds: [errorEmbed("40401")], components: [] });
+  }
 
-        const embedFound = new EmbedBuilder()
-          .setColor("#5661EA")
-          .setTitle("<:Link:1437121460220199094> Roblox 계정을 찾았습니다.")
-          .setDescription(
-            `연동할 계정이 맞는지 확인해주세요.\n> 프로필: **${robloxUser.displayName} (@${robloxUser.name})**`
-          )
-          .setFooter({ text: `ROKA Verify • ${getKSTTime()}` });
+  // ✔️ 닉네임 확보
+  const robloxId = robloxUser.id;
+  const robloxName = robloxUser.name ?? robloxUser.displayName ?? "Unknown";
 
-        return interaction.editReply({ embeds: [embedFound], components: [verifyRow] });
-      }
+  // DB 등록 (roblox_name 포함)
+  await setUserAuth(interaction.user.id, robloxId, robloxName, null, false);
+
+  const verifyRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`verify_${robloxId}`)
+      .setLabel("연동하기")
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId("re_search")
+      .setLabel("다시 검색")
+      .setStyle(ButtonStyle.Danger)
+  );
+
+  const embedFound = new EmbedBuilder()
+    .setColor("#5661EA")
+    .setTitle("<:Link:1437121460220199094> Roblox 계정을 찾았습니다.")
+    .setDescription(
+      `연동할 계정이 맞는지 확인해주세요.\n> 프로필: **${robloxName} (@${robloxUser.name})**`
+    )
+    .setFooter({ text: `ROKA Verify • ${getKSTTime()}` });
+
+  return interaction.editReply({ embeds: [embedFound], components: [verifyRow] });
+}
 
       // 🔁 다시 검색 버튼 (비공개 유지)
       if (interaction.isButton() && interaction.customId === "re_search") {
@@ -421,10 +430,12 @@ if (interaction.isCommand() && interaction.commandName === "수동인증") {
 
   let robloxData = null;
   try {
+    // 먼저 ID로 검색
     const res = await fetch(`https://users.roblox.com/v1/users/${robloxIdInput}`);
     if (res.ok) {
       robloxData = await res.json();
     } else {
+      // ID가 아니면 닉네임으로 검색
       const alt = await fetch("https://users.roblox.com/v1/usernames/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -443,7 +454,11 @@ if (interaction.isCommand() && interaction.commandName === "수동인증") {
     return interaction.editReply({ embeds: [ errorEmbed("40401") ] });
   }
 
-  await setUserAuth(target.id, robloxData.id, robloxData.name, null, true);
+  // roblox_name 확보: robloxData.name 또는 robloxData.displayName 등
+  const robloxName = robloxData.name ?? robloxData.displayName ?? "Unknown";
+
+  // 수동인증이므로 verify_code 에 "수동인증" 문자열 사용
+  await setUserAuth(target.id, robloxData.id, robloxName, "수동인증", true);
 
   const member = await interaction.guild.members.fetch(target.id);
   for (const r of VERIFIED_ROLES) {
@@ -453,7 +468,7 @@ if (interaction.isCommand() && interaction.commandName === "수동인증") {
   const embedDone = new EmbedBuilder()
     .setColor("#5661EA")
     .setTitle("<:Finger:1437121461683753031> 인증이 완료되었습니다.")
-    .setDescription(`<@${target.id}>님, 로블록스 **${robloxData.name}** 계정으로 인증이 완료되었습니다.`)
+    .setDescription(`<@${target.id}>님, 로블록스 **${robloxName}** 계정으로 인증이 완료되었습니다.`)
     .setFooter({ text: `ROKA Verify • ${getKSTTime()}` });
 
   return interaction.editReply({ embeds: [embedDone] });
