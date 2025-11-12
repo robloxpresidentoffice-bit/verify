@@ -139,7 +139,7 @@ export async function setupTicket(client) {
         });
 
         await interaction.editReply({
-          content: `✅ ${interaction.user}님, 티켓이 생성되었습니다!\n<#${ticketChannel.id}>로 이동하세요.`,
+         content: `${interaction.user}님, 티켓이 생성되었습니다.\n<#${ticketChannel.id}>로 이동하세요.`,
         });
 
         const ticketEmbed = new EmbedBuilder()
