@@ -403,57 +403,73 @@
         }
       }
 
-      // ✅ /수동인증
-      if (interaction.isCommand() && interaction.commandName === "수동인증") {
-        if (!interaction.member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
-          return interaction.reply({ content: "⚠️ 관리자 권한이 없습니다.", ephemeral: true });
-        }
+// ✅ /수동인증 처리
+if (interaction.isCommand() && interaction.commandName === "수동인증") {
+  const ALLOWED_ROLE_ID = "1437445346002473094";
 
-        const target = interaction.options.getUser("대상");
-        const robloxIdInput = interaction.options.getString("robloxid");
+  if (
+    !interaction.member.permissions.has(PermissionsBitField.Flags.ManageRoles) &&
+    !interaction.member.roles.cache.has(ALLOWED_ROLE_ID)
+  ) {
+    return interaction.reply({ content: "⚠️ 관리자 권한이 없습니다.", ephemeral: true });
+  }
 
-        // Roblox API 호출
-        let robloxData = null;
-        try {
-          const res = await fetch(`https://users.roblox.com/v1/users/${robloxIdInput}`);
-          if (res.ok) robloxData = await res.json();
-          else {
-            const alt = await fetch("https://users.roblox.com/v1/usernames/users", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ usernames: [robloxIdInput] }),
-            });
-            const altData = await alt.json();
-            if (altData.data?.length) robloxData = altData.data[0];
-          }
-        } catch (e) {
-          return interaction.reply({ embeds: [errorEmbed("40401")], ephemeral: true });
-        }
+  await interaction.deferReply({ ephemeral: true });
 
-        if (!robloxData) return interaction.reply({ embeds: [errorEmbed("40401")], ephemeral: true });
+  const target = interaction.options.getUser("대상");
+  const robloxIdInput = interaction.options.getString("robloxid");
 
-        await setUserAuth(target.id, robloxData.id, robloxData.name, null, true);
-
-        const member = await interaction.guild.members.fetch(target.id);
-        for (const r of VERIFIED_ROLES) await member.roles.add(r).catch(() => {});
-
-        const embedDone = new EmbedBuilder()
-          .setColor("#5661EA")
-          .setTitle("<:Finger:1437121461683753031> 인증이 완료되었습니다.")
-          .setDescription(`<@${target.id}>님, 로블록스 **${robloxData.name}** 계정으로 인증이 완료되었습니다.`)
-          .setFooter({ text: `ROKA Verify • ${getKSTTime()}` });
-
-        return interaction.reply({ embeds: [embedDone] }); // 반드시 return
+  let robloxData = null;
+  try {
+    const res = await fetch(`https://users.roblox.com/v1/users/${robloxIdInput}`);
+    if (res.ok) {
+      robloxData = await res.json();
+    } else {
+      const alt = await fetch("https://users.roblox.com/v1/usernames/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usernames: [robloxIdInput] }),
+      });
+      const altData = await alt.json();
+      if (altData.data?.length) {
+        robloxData = altData.data[0];
       }
-    } catch (err) {
-      console.error("❌ 인증 오류:", err);
-      try {
-        if (interaction.deferred || interaction.replied) {
-          await interaction.editReply({ embeds: [errorEmbed("50001")] });
-        } else {
-          await interaction.reply({ embeds: [errorEmbed("50001")], ephemeral: true });
-        }
-      } catch {}
     }
-  }); // <-- interactionCreate 끝
-} // <-- setupAuth 끝
+  } catch (e) {
+    return interaction.editReply({ embeds: [ errorEmbed("40401") ] });
+  }
+
+  if (!robloxData) {
+    return interaction.editReply({ embeds: [ errorEmbed("40401") ] });
+  }
+
+  await setUserAuth(target.id, robloxData.id, robloxData.name, null, true);
+
+  const member = await interaction.guild.members.fetch(target.id);
+  for (const r of VERIFIED_ROLES) {
+    await member.roles.add(r).catch(() => {});
+  }
+
+  const embedDone = new EmbedBuilder()
+    .setColor("#5661EA")
+    .setTitle("<:Finger:1437121461683753031> 인증이 완료되었습니다.")
+    .setDescription(`<@${target.id}>님, 로블록스 **${robloxData.name}** 계정으로 인증이 완료되었습니다.`)
+    .setFooter({ text: `ROKA Verify • ${getKSTTime()}` });
+
+  return interaction.editReply({ embeds: [embedDone] });
+}
+  
+ } catch (err) {
+    console.error("❌ 인증 오류:", err);
+    try {
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply({ embeds: [ errorEmbed("50001") ] });
+      } else {
+        await interaction.reply({ embeds: [ errorEmbed("50001") ], ephemeral: true });
+      }
+    } catch (innerErr) {
+      console.error("❌ 오류 응답 실패:", innerErr);
+    }
+  }
+}); // <-- client.on(interactionCreate) 끝  
+} // <-- setupAuth 함수 끝  
